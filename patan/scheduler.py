@@ -16,7 +16,7 @@ class Scheduler(object):
 
     def ensure_queue(self):
         if self.queue is None:
-            self.queue = asyncio.Queue(1000)
+            self.queue = asyncio.Queue(1024)
 
     def enqueue_nowait(self, request: Request):
         self.ensure_queue()
@@ -26,12 +26,13 @@ class Scheduler(object):
     async def enqueue(self, request: Request):
         self.ensure_queue()
         if not self.df.is_duplicated(request):
+            logger.debug('pushing new request {}'.format(request.url))
             await self.queue.put(request)
-        else:
-            logger.debug('skipping {}'.format(request.url))
 
     async def dequeue(self):
         self.ensure_queue()
+        task_name = asyncio.current_task().get_name()
+        logger.info('%s is waiting for new request...' % (task_name))
         req = await self.queue.get()
         return req
 

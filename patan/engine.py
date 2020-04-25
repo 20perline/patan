@@ -22,26 +22,29 @@ class Engine(object):
         for req in self.spider.start_requests():
             self.scheduler.enqueue_nowait(req)
 
-        consumers = [asyncio.create_task(self.work(), name='Task-{:0>2d}'.format(_)) for _ in range(self.worker_num)]
-        await asyncio.gather(*consumers)
-
+        workers = [asyncio.create_task(self.work(), name='Task-{:0>2d}'.format(_)) for _ in range(self.worker_num)]
+        # Wait until the queue is fully processed.
         await self.scheduler.start()
+
+        await asyncio.gather(*workers, return_exceptions=True)
+
+        await self.shutdown()
+
+    async def shutdown(self):
+        await self.spider.close()
+        await self.downloader.close()
+        logger.info('engine is shutdown.')
 
     async def work(self):
         while True:
             request = await self.scheduler.dequeue()
-            logger.info('>'*3 + ' ' + request.url)
             response = await self.downloader.fetch(request)
+            self.scheduler.complete_request()
             if response is None or response.text is None:
                 continue
-            logger.info('<'*3 + ' ' + request.url)
             async for result in request.callback(response):
                 if isinstance(result, Request):
                     await self.scheduler.enqueue(result)
-                else:
-                    logger.info('<'*6 + ' ' + result)
-            self.scheduler.complete_request()
 
     def start(self):
         asyncio.run(self.bootstrap(), debug=False)
-        print('end')

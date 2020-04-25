@@ -1,5 +1,8 @@
 # _*_ coding: utf-8 _*_
 from .request import Request
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class BaseDupFilter(object):
@@ -18,7 +21,9 @@ class SimpleDupFilter(BaseDupFilter):
         self.seen = set()
 
     def is_duplicated(self, request: Request):
-        if request.url not in self.seen:
-            self.seen.add(request.url)
+        url = request.url
+        if url not in self.seen:
+            self.seen.add(url)
             return False
+        logger.debug('>>> {} skipped'.format(url))
         return True
