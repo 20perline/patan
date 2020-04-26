@@ -18,7 +18,8 @@ class Downloader(object):
     async def close(self):
         if self.client is not None:
             await self.client.close()
-        logger.info('downloader is closed now')
+            self.client = None
+            logger.info('downloader is closed now')
 
     async def fetch(self, request):
         if self.client is None:

@@ -4,7 +4,6 @@ import logging
 import aiohttp
 import mimetypes
 import os
-from urllib.parse import urlsplit
 from .request import Request
 
 
@@ -23,17 +22,9 @@ class BaseSpider(object):
         for url in self.start_urls:
             yield Request(url=url, callback=self.parse, encoding=self.encoding)
 
-    async def close(self):
-        if self.downloader is not None:
-            await self.downloader.close()
-        logger.info('spider is closed now')
-
     def ensure_downloader(self):
         if self.downloader is None:
             self.downloader = aiohttp.ClientSession()
-
-    def get_base_url(self, url):
-        return "{0.scheme}://{0.netloc}".format(urlsplit(url))
 
     async def download_image(self, url, save_dir, save_as):
         self.ensure_downloader()
@@ -55,3 +46,9 @@ class BaseSpider(object):
 
     async def parse(self, response):
         return
+
+    async def close(self):
+        if self.downloader is not None:
+            await self.downloader.close()
+            self.downloader = None
+            logger.info('spider is closed now')

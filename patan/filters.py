@@ -10,7 +10,7 @@ class BaseDupFilter(object):
     def __init__(self):
         pass
 
-    def is_duplicated(self, request):
+    def seen(self, request):
         return False
 
 
@@ -18,12 +18,12 @@ class SimpleDupFilter(BaseDupFilter):
 
     def __init__(self):
         super().__init__()
-        self.seen = set()
+        self.item_set = set()
 
-    def is_duplicated(self, request: Request):
+    def seen(self, request: Request):
         url = request.url
-        if url not in self.seen:
-            self.seen.add(url)
+        if url not in self.item_set:
+            self.item_set.add(url)
             return False
         logger.debug('>>> {} skipped'.format(url))
         return True
