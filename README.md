@@ -1,11 +1,13 @@
 # patan
 a simple python 3.7+ spider inspired by scrapy
 
+### Todo
 
-- [ ] threshold
-- [ ] item pipeline
-- [ ] middlewares
-- [ ] multiple processing
-- [ ] statistics
-- [ ] web UI
-- [ ] other protocols
+- [ ] Multiprocessing
+- [ ] Scaffolding CLI 
+- [ ] Throttle Control
+- [ ] Item Pipelines
+- [ ] Middlewares
+- [ ] Statistics Data Collecting
+- [ ] Web UI
+- [ ] More Protocols Support
