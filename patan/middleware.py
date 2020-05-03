@@ -5,6 +5,7 @@ from .http.response import Response
 from .downloadermws.timeout import DownloadTimeoutMiddleware
 from .downloadermws.useragent import UserAgentMiddleware
 from .spidermws.depth import DepthMiddleware
+from .spidermws.httperror import HttpErrorMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,7 @@ class DownloaderMiddlewareManager(MiddlewareManager):
         middlewares.append(DownloadTimeoutMiddleware())
         super().__init__(middlewares)
 
+    '''each middleware should return None if thing goes right, also will return Request or Response object if necessary'''
     def handle_request(self, request, spider):
         if self.middlewares is None or len(self.middlewares) == 0:
             return
@@ -43,6 +45,7 @@ class DownloaderMiddlewareManager(MiddlewareManager):
 
         return
 
+    '''if some middleware return a Request object, will return that object and skip the rest of middlewares'''
     def handle_response(self, request, response, spider):
         if self.middlewares is None or len(self.middlewares) == 0:
             return response
@@ -65,43 +68,34 @@ class SpiderMiddlewareManager(MiddlewareManager):
     def __init__(self, middlewares=None):
         if middlewares is None:
             middlewares = []
+        middlewares.append(HttpErrorMiddleware())
         middlewares.append(DepthMiddleware())
         super().__init__(middlewares)
 
+    '''response will be None if exception occurred'''
     def handle_input(self, response, spider):
         if self.middlewares is None or len(self.middlewares) == 0:
             return
 
         try:
             for mw in self.middlewares:
-                ret = mw.before_parse(response, spider)
-                if ret is None:
-                    continue
-                else:
-                    break
+                mw.before_parse(response, spider)
         except Exception as e:
             logger.warn('spider middleware failed to handle response %s, cancelling other input middlewares: %s' % (response, e))
+            response = None
 
         return
 
+    '''return type could be Iterable of Request or Items'''
     def handle_output(self, response, result, spider):
         if self.middlewares is None or len(self.middlewares) == 0:
-            return self._to_iterable(result)
+            return result
 
         try:
             for mw in self.middlewares:
-                result = mw.after_parse(response, self._to_iterable(result), spider)
+                result = mw.after_parse(response, result, spider)
         except Exception as e:
             logger.warn('spider middleware failed to handle result %s, cancelling other output middlewares: %s' % (result, e))
-            return {}
+            return None
 
-        return self._to_iterable(result)
-
-    def _is_iterable(self, var):
-        return hasattr(var, '__iter__')
-
-    def _to_iterable(self, var):
-        a = []
-        for i in var:
-            a.append(i)
-        return a
+        return result

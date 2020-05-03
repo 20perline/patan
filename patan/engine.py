@@ -5,7 +5,6 @@ import asyncio
 import traceback
 from .http.request import Request
 from .http.response import Response
-from .item import Item
 from .scheduler import Scheduler
 from .downloader import Downloader
 from .middleware import SpiderMiddlewareManager
@@ -38,7 +37,7 @@ class Engine(object):
 
     async def bootstrap(self):
         if len(self.spiders) == 0:
-            logger.error('no spiders')
+            logger.error('no spiders available, exiting now.')
             exit()
         for spider in self.spiders.values():
             for req in spider.start_requests():
@@ -97,17 +96,22 @@ class Engine(object):
             if isinstance(response, Request):
                 self._attach_spider(response, spider)
                 await self.scheduler.enqueue(response)
+                continue
 
             # walk through all spider middlewares
             self.spidermw.handle_input(response, spider)
+            if response is None:
+                continue
             callback = request.callback
             result = callback(response)
             response = self.spidermw.handle_output(response, result, spider)
+            if response is None:
+                continue
             for resp in response:
                 if isinstance(resp, Request):
                     self._attach_spider(resp, spider)
                     await self.scheduler.enqueue(resp)
-                if isinstance(resp, Item):
+                else:
                     logger.info(resp)
 
     # manager worker used to gracefully exit
@@ -127,8 +131,8 @@ class Engine(object):
     async def shutdown(self):
         try:
             await self.downloader.close()
-            for spider in self.spiders:
-                await spider.close()
+            for sp, spider in self.spiders.items():
+                spider.close()
         except Exception as e:
             logger.warn('failed to close components: %s' % str(e))
         finally:

@@ -7,4 +7,4 @@ class SpiderMiddleware(object):
         return
 
     def after_parse(self, response, result, spider):
-        return {}
+        return result

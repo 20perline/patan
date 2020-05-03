@@ -12,7 +12,7 @@ class Downloader(object):
 
     def __init__(self):
         self.client = None
-        self.middleware = DownloaderMiddlewareManager()
+        self.downloadmw = DownloaderMiddlewareManager()
 
     async def close(self):
         if self.client is not None:
@@ -29,12 +29,12 @@ class Downloader(object):
             logger.error('<<< %s failed: %s' % (request, e))
             return None
         except Exception as e:
-            logger.error('<<< %s failed: %s' % e.message)
+            logger.error('<<< %s failed: %s' % str(e))
             return None
 
     async def _fetch(self, request, spider):
         logger.info(request)
-        self.middleware.handle_request(request, spider)
+        self.downloadmw.handle_request(request, spider)
         response = None
         request_headers = request.headers
         timeout = request.meta.pop('timeout', 300)
@@ -48,5 +48,5 @@ class Downloader(object):
                 request=request
             )
         logger.info(response)
-        response = self.middleware.handle_response(request, response, spider)
+        response = self.downloadmw.handle_response(request, response, spider)
         return response

@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 class DepthMiddleware(SpiderMiddleware):
 
-    def __init__(self, maxdepth=99999):
+    def __init__(self, maxdepth=9999):
         self.maxdepth = maxdepth
 
     def check_depth(self, request, resp_depth):
