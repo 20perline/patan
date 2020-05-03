@@ -2,7 +2,7 @@
 
 import logging
 import asyncio
-from .request import Request
+from .http.request import Request
 from .filters import SimpleDupFilter
 
 logger = logging.getLogger(__name__)
@@ -31,13 +31,13 @@ class Scheduler(object):
             await self.queue.put(request)
 
     # pop new request from the queue, will block if need
-    async def dequeue(self):
+    async def next_request(self):
         self.ensure_queue()
         request = await self.queue.get()
         return request
 
     # confirm that last task is done
-    def acknowledge(self):
+    def ack_last_request(self):
         self.queue.task_done()
 
     # join queue
@@ -45,5 +45,6 @@ class Scheduler(object):
         self.ensure_queue()
         await self.queue.join()
 
-    def is_idle(self):
+    # if there're more pending request in the queue
+    def has_pending_requests(self):
         return self.queue.empty()

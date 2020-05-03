@@ -2,30 +2,51 @@
 
 import logging
 import asyncio
-from .request import Request
+import traceback
+from .http.request import Request
+from .http.response import Response
+from .item import Item
 from .scheduler import Scheduler
-from .spiders import BaseSpider
 from .downloader import Downloader
+from .middleware import SpiderMiddlewareManager
 
 logger = logging.getLogger(__name__)
 
 
 class Engine(object):
 
-    def __init__(self, spider=None, worker_num=20):
-        self.worker_num = worker_num
-        self.idle_worker_names = set()
+    def __init__(self, workers_num=20):
+        self.workers_num = workers_num
+        self.workers_waiting = set()
         self.workers = []
+        self.spiders = dict()
         self.scheduler = Scheduler()
         self.downloader = Downloader()
-        self.spider = spider or BaseSpider()
+        self.spidermw = SpiderMiddlewareManager()
+
+    def add_spider(self, spider=None):
+        if spider is None:
+            raise ValueError('unknown spider')
+        self.spiders.update({spider.name: spider})
+
+    def _attach_spider(self, request, spider):
+        if 'sp' not in request.meta:
+            request.meta['sp'] = spider.name
+
+    def _detect_spider(self, request):
+        return self.spiders.get(request.meta['sp'])
 
     async def bootstrap(self):
-        for req in self.spider.start_requests():
-            self.scheduler.enqueue_nowait(req)
+        if len(self.spiders) == 0:
+            logger.error('no spiders')
+            exit()
+        for spider in self.spiders.values():
+            for req in spider.start_requests():
+                self._attach_spider(req, spider)
+                self.scheduler.enqueue_nowait(req)
 
         # create all workers and start concurrently
-        for _ in range(self.worker_num):
+        for _ in range(self.workers_num):
             name = 'Task-{:0>2d}'.format(_)
             task = asyncio.create_task(self.work())
             task.set_name(name)
@@ -49,6 +70,7 @@ class Engine(object):
         except asyncio.CancelledError:
             logger.info('worker %s is cancelled' % worker_name)
         except Exception as e:
+            traceback.print_exc()
             logger.info('worker %s is crushed, exception: %s' % (worker_name, str(e)))
         finally:
             await self.release()
@@ -56,21 +78,37 @@ class Engine(object):
     async def _work(self, worker_name):
         while True:
             logger.info('%s is waiting for new request...' % (worker_name))
-            self.idle_worker_names.add(worker_name)
-            request = await self.scheduler.dequeue()
-            self.idle_worker_names.remove(worker_name)
+            self.workers_waiting.add(worker_name)
+            request = await self.scheduler.next_request()
+            self.workers_waiting.remove(worker_name)
 
+            spider = self._detect_spider(request)
             response = None
             try:
-                response = await self.downloader.fetch(request)
+                response = await self.downloader.fetch(request, spider)
             finally:
-                self.scheduler.acknowledge()
+                self.scheduler.ack_last_request()
 
-            if response is None or response.text is None:
+            # check downloader return type
+            if not isinstance(response, (Request, Response)):
+                logger.debug('request %s got invalid response' % request)
                 continue
-            async for result in request.callback(response):
-                if isinstance(result, Request):
-                    await self.scheduler.enqueue(result)
+            # some middleware might return requests
+            if isinstance(response, Request):
+                self._attach_spider(response, spider)
+                await self.scheduler.enqueue(response)
+
+            # walk through all spider middlewares
+            self.spidermw.handle_input(response, spider)
+            callback = request.callback
+            result = callback(response)
+            response = self.spidermw.handle_output(response, result, spider)
+            for resp in response:
+                if isinstance(resp, Request):
+                    self._attach_spider(resp, spider)
+                    await self.scheduler.enqueue(resp)
+                if isinstance(resp, Item):
+                    logger.info(resp)
 
     # manager worker used to gracefully exit
     async def manage(self):
@@ -80,7 +118,7 @@ class Engine(object):
                 continue
             # when scheduler's queue is empty and all workers are idle
             # manager worker will terminate the engine
-            if self.scheduler.is_idle() and len(self.idle_worker_names) == self.worker_num:
+            if self.scheduler.has_pending_requests() and len(self.workers_waiting) == self.workers_num:
                 for worker in self.workers:
                     worker.cancel()
                 break
@@ -89,11 +127,12 @@ class Engine(object):
     async def shutdown(self):
         try:
             await self.downloader.close()
-            await self.spider.close()
+            for spider in self.spiders:
+                await spider.close()
         except Exception as e:
             logger.warn('failed to close components: %s' % str(e))
         finally:
             logger.info('engine is shutdown now')
 
     def start(self):
-        asyncio.run(self.bootstrap(), debug=False)
+        asyncio.run(self.bootstrap())

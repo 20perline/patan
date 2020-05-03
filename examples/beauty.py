@@ -2,12 +2,10 @@
 
 import sys
 import logging
-import hashlib
-import os
 sys.path.append('../patan')
-from patan.engine import Engine
+from patan.patan import Patan
 from patan.spiders import BaseSpider
-from patan.request import Request
+from patan.http.request import Request
 from patan import utils
 from bs4 import BeautifulSoup
 from pathlib import Path
@@ -17,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 class BeautySpider(BaseSpider):
 
+    name = 'beauty'
     start_urls = [
         'http://www.656g.com/meinv/xinggan/10373.html'
     ]
@@ -43,8 +42,8 @@ class BeautySpider(BaseSpider):
     #             yield Request(url=href, callback=self.parse_item)
 
     # async def parse_item(self, response):
-    async def parse(self, response):
-        soup = BeautifulSoup(response.text, 'html.parser')
+    def parse(self, response):
+        soup = BeautifulSoup(response.body, 'html.parser')
         entries = soup.select('div.page >a')
         if not entries:
             return
@@ -57,13 +56,12 @@ class BeautySpider(BaseSpider):
         images = soup.select('div.pic-main >a >img')
         if images is None or len(images) == 0:
             return
-        md5 = hashlib.md5()
-        root_dir = os.path.join(str(Path.home()), 'Downloads', 'SSNI674')
         for image in images:
             url = image.get('src')
-            md5.update(url.encode(encoding='utf-8'))
-            await self.download_image(url, root_dir, md5.hexdigest())
+            logger.info('image %s' % url)
 
 
-engine = Engine(spider=BeautySpider(), worker_num=20)
-engine.start()
+if __name__ == '__main__':
+    patan = Patan()
+    patan.crawl(BeautySpider())
+    patan.start()
