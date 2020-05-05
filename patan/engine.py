@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 class Engine(object):
 
-    def __init__(self, workers_num=20):
+    def __init__(self, workers_num=10):
         self.workers_num = workers_num
         self.workers_waiting = set()
         self.workers = []
@@ -46,7 +46,7 @@ class Engine(object):
 
         # create all workers and start concurrently
         for _ in range(self.workers_num):
-            name = 'Task-{:0>2d}'.format(_)
+            name = 'Worker-{:0>2d}'.format(_)
             task = asyncio.create_task(self.work())
             task.set_name(name)
             self.workers.append(task)
@@ -67,22 +67,19 @@ class Engine(object):
         try:
             await self._work(worker_name)
         except asyncio.CancelledError:
-            logger.info('worker %s is cancelled' % worker_name)
+            logger.info('%s is cancelled' % worker_name)
         except Exception as e:
-            traceback.print_exc()
-            logger.info('worker %s is crushed, exception: %s' % (worker_name, str(e)))
-        finally:
-            await self.release()
+            logger.info('%s is crushed, exception: %s' % (worker_name, str(e)))
+            logger.error(traceback.format_exc())
 
     async def _work(self, worker_name):
         while True:
-            logger.info('%s is waiting for new request...' % (worker_name))
+            logger.debug('%s is waiting for new request...' % (worker_name))
             self.workers_waiting.add(worker_name)
             request = await self.scheduler.next_request()
             self.workers_waiting.remove(worker_name)
 
             spider = self._detect_spider(request)
-            response = None
             try:
                 response = await self.downloader.fetch(request, spider)
             finally:
@@ -99,12 +96,14 @@ class Engine(object):
                 continue
 
             # walk through all spider middlewares
-            self.spidermw.handle_input(response, spider)
-            if response is None:
-                continue
-            callback = request.callback
-            result = callback(response)
-            response = self.spidermw.handle_output(response, result, spider)
+            try:
+                self.spidermw.handle_input(response, spider)
+                callback = request.callback
+                cb_res = callback(response)
+                response = self.spidermw.handle_output(response, cb_res, spider)
+            except Exception as e:
+                logger.warn("%s spider middleware chain aborted, exception: %s \n%s" % (response, e, traceback.format_exc()))
+                response = self.spidermw.handle_exception(response, e, spider)
             if response is None:
                 continue
             for resp in response:
@@ -134,9 +133,12 @@ class Engine(object):
             for sp, spider in self.spiders.items():
                 spider.close()
         except Exception as e:
-            logger.warn('failed to close components: %s' % str(e))
+            logger.warn('failed to close components: %s' % e)
         finally:
             logger.info('engine is shutdown now')
 
     def start(self):
-        asyncio.run(self.bootstrap())
+        try:
+            asyncio.run(self.bootstrap())
+        except KeyboardInterrupt:
+            logger.info('engine was shutdown by force')

@@ -8,3 +8,6 @@ class DownloaderMiddleware(object):
 
     def after_fetch(self, request, response, spider):
         return response
+
+    def when_exception(self, request, exception, spider):
+        return

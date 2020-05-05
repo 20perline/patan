@@ -15,4 +15,5 @@ class HttpErrorMiddleware(SpiderMiddleware):
     def before_parse(self, response, spider):
         if 200 <= response.status < 400:
             return
+        logger.info('%s ignored: HTTP ERROR' % response)
         raise IgnoreRequest()

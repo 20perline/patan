@@ -8,3 +8,6 @@ class SpiderMiddleware(object):
 
     def after_parse(self, response, result, spider):
         return result
+
+    def when_exception(self, response, exception, spider):
+        return

@@ -26,4 +26,4 @@ class Request(object):
         self.meta = meta or {}
 
     def __str__(self):
-        return "<%s %s>" % (self.method, self.url)
+        return "%s %s" % (self.method, self.url)

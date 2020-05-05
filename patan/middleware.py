@@ -33,33 +33,35 @@ class DownloaderMiddlewareManager(MiddlewareManager):
         if self.middlewares is None or len(self.middlewares) == 0:
             return
 
-        try:
-            for mw in self.middlewares:
-                mw_result = mw.before_fetch(request, spider)
-                if mw_result is None:
-                    continue
-                if isinstance(mw_result, (Request, Response)):
-                    return mw_result
-        except Exception as e:
-            logger.warn('downloader middleware failed to handle %s, cancelling other before middlewares: %s' % (request, e))
-
-        return
+        for mw in self.middlewares:
+            mw_result = mw.before_fetch(request, spider)
+            if mw_result is None:
+                continue
+            if isinstance(mw_result, (Request, Response)):
+                return mw_result
 
     '''if some middleware return a Request object, will return that object and skip the rest of middlewares'''
     def handle_response(self, request, response, spider):
         if self.middlewares is None or len(self.middlewares) == 0:
             return response
 
-        try:
-            for mw in self.middlewares:
-                response = mw.after_fetch(request, response, spider)
-                if isinstance(response, Response):
-                    continue
-                if isinstance(response, Request):
-                    return response
-        except Exception as e:
-            logger.warn('downloader middleware failed to handle %s, cancelling other after middlewares: %s' % (request, e))
-            raise e
+        for mw in self.middlewares:
+            response = mw.after_fetch(request, response, spider)
+            if isinstance(response, Response):
+                continue
+            if isinstance(response, Request):
+                return response
+        return response
+
+    '''return None or Request or Response'''
+    def handle_exception(self, request, exception, spider):
+        if self.middlewares is None or len(self.middlewares) == 0:
+            return
+
+        for mw in self.middlewares:
+            response = mw.when_exception(request, exception, spider)
+            if isinstance(response, (Request, Response)):
+                return response
         return response
 
 
@@ -72,30 +74,32 @@ class SpiderMiddlewareManager(MiddlewareManager):
         middlewares.append(DepthMiddleware())
         super().__init__(middlewares)
 
-    '''response will be None if exception occurred'''
+    '''each middleware will return None or raise an Exception'''
     def handle_input(self, response, spider):
         if self.middlewares is None or len(self.middlewares) == 0:
             return
 
-        try:
-            for mw in self.middlewares:
-                mw.before_parse(response, spider)
-        except Exception as e:
-            logger.warn('spider middleware failed to handle response %s, cancelling other input middlewares: %s' % (response, e))
-            response = None
-
-        return
+        for mw in self.middlewares:
+            mw.before_parse(response, spider)
 
     '''return type could be Iterable of Request or Items'''
     def handle_output(self, response, result, spider):
         if self.middlewares is None or len(self.middlewares) == 0:
             return result
 
-        try:
-            for mw in self.middlewares:
-                result = mw.after_parse(response, result, spider)
-        except Exception as e:
-            logger.warn('spider middleware failed to handle result %s, cancelling other output middlewares: %s' % (result, e))
-            return None
+        for mw in self.middlewares:
+            result = mw.after_parse(response, result, spider)
 
         return result
+
+    '''return None or Iterable'''
+    def handle_exception(self, response, exception, spider):
+        if self.middlewares is None or len(self.middlewares) == 0:
+            return
+
+        for mw in self.middlewares:
+            result = mw.when_exception(response, exception, spider)
+            if result is not None:
+                return result
+
+        return

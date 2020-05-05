@@ -2,6 +2,9 @@
 
 import logging
 import aiohttp
+import asyncio
+import traceback
+from .http.request import Request
 from .http.response import Response
 from .middleware import DownloaderMiddlewareManager
 
@@ -26,15 +29,25 @@ class Downloader(object):
         try:
             return await self._fetch(request, spider)
         except aiohttp.client_exceptions.ClientOSError as e:
-            logger.error('<<< %s failed: %s' % (request, e))
-            return None
+            logger.error('%s fetch client exception: %s' % (request, e))
+        except asyncio.exceptions.TimeoutError:
+            logger.error('%s timed out' % request)
         except Exception as e:
-            logger.error('<<< %s failed: %s' % str(e))
-            return None
+            logger.error('%s fetch exception: %s' % (request, e))
+        return None
 
     async def _fetch(self, request, spider):
         logger.info(request)
-        self.downloadmw.handle_request(request, spider)
+        try:
+            mw_res = self.downloadmw.handle_request(request, spider)
+            if isinstance(mw_res, (Request, Response)):
+                return mw_res
+        except Exception as e:
+            logger.warn("%s downloader middleware chain aborted, exception: %s \n%s" % (request, e, traceback.format_exc()))
+            mw_res = self.downloadmw.handle_exception(request, e, spider)
+            if isinstance(mw_res, (Request, Response)):
+                return mw_res
+
         response = None
         request_headers = request.headers
         timeout = request.meta.pop('timeout', 300)
@@ -48,5 +61,8 @@ class Downloader(object):
                 request=request
             )
         logger.info(response)
-        response = self.downloadmw.handle_response(request, response, spider)
+        try:
+            response = self.downloadmw.handle_response(request, response, spider)
+        except Exception as e:
+            logger.warn("%s downloader middleware chain aborted, exception: %s \n%s" % (request, e, traceback.format_exc()))
         return response

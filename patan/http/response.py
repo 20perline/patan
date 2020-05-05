@@ -15,4 +15,4 @@ class Response(object):
         return self.request.meta
 
     def __str__(self):
-        return "<%d %s>" % (self.status, self.url)
+        return "%d %s" % (self.status, self.url)

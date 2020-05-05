@@ -4,7 +4,7 @@ a simple python 3.7+ spider inspired by scrapy
 ### Todo
 
 - [ ] Settings File
-- [ ] Middlewares
+- [x] Middlewares
 - [ ] Exception Handling
 - [ ] Multiprocessing
 - [ ] Scaffolding CLI
