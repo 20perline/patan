@@ -83,7 +83,7 @@ class Engine(object):
             spider = self._detect_spider(request)
             try:
                 while not self.downloader.available():
-                    await asyncio.sleep(0.1)
+                    await asyncio.sleep(0.05)
                 response = await self.downloader.fetch(request, spider)
             finally:
                 self.scheduler.ack_last_request()
