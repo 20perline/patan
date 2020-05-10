@@ -1,5 +1,6 @@
 # _*_ coding: utf-8 _*_
-from .request import Request
+
+from .http.request import Request
 import logging
 
 logger = logging.getLogger(__name__)
