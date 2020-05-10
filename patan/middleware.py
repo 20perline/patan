@@ -1,18 +1,16 @@
 # _*_ coding: utf-8 _*_
 import logging
+from . import utils
 from .http.request import Request
 from .http.response import Response
-from .downloadermws.timeout import DownloadTimeoutMiddleware
-from .downloadermws.useragent import UserAgentMiddleware
-from .spidermws.depth import DepthMiddleware
-from .spidermws.httperror import HttpErrorMiddleware
+
 
 logger = logging.getLogger(__name__)
 
 
 class MiddlewareManager(object):
 
-    def __init__(self, middlewares=None):
+    def __init__(self, *middlewares):
         self.middlewares = middlewares
         if self.middlewares is not None and len(self.middlewares) > 0:
             for mw in self.middlewares:
@@ -21,12 +19,17 @@ class MiddlewareManager(object):
 
 class DownloaderMiddlewareManager(MiddlewareManager):
 
-    def __init__(self, middlewares=None):
-        if middlewares is None:
-            middlewares = []
-        middlewares.append(UserAgentMiddleware())
-        middlewares.append(DownloadTimeoutMiddleware())
-        super().__init__(middlewares)
+    def __init__(self, *middlewares):
+        super().__init__(*middlewares)
+
+    @classmethod
+    def from_settings(cls, settings):
+        middlewares = []
+        for mw in settings.get_sorted_list('downloader.middlewares'):
+            mw_cls = utils.load_class_by_name(mw)
+            mw_obj = utils.get_obj_by_class(mw_cls, settings)
+            middlewares.append(mw_obj)
+        return cls(*middlewares)
 
     '''each middleware should return None if thing goes right, also will return Request or Response object if necessary'''
     def handle_request(self, request, spider):
@@ -67,12 +70,17 @@ class DownloaderMiddlewareManager(MiddlewareManager):
 
 class SpiderMiddlewareManager(MiddlewareManager):
 
-    def __init__(self, middlewares=None):
-        if middlewares is None:
-            middlewares = []
-        middlewares.append(HttpErrorMiddleware())
-        middlewares.append(DepthMiddleware())
-        super().__init__(middlewares)
+    def __init__(self, *middlewares):
+        super().__init__(*middlewares)
+
+    @classmethod
+    def from_settings(cls, settings):
+        middlewares = []
+        for mw in settings.get_sorted_list('spider.middlewares'):
+            mw_cls = utils.load_class_by_name(mw)
+            mw_obj = utils.get_obj_by_class(mw_cls, settings)
+            middlewares.append(mw_obj)
+        return cls(*middlewares)
 
     '''each middleware will return None or raise an Exception'''
     def handle_input(self, response, spider):

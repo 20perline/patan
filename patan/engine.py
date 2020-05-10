@@ -14,14 +14,15 @@ logger = logging.getLogger(__name__)
 
 class Engine(object):
 
-    def __init__(self, workers_num=10):
-        self.workers_num = workers_num
+    def __init__(self, settings):
+        self.settings = settings
+        self.workers_num = self.settings.get('engine.workers_num')
         self.workers_waiting = set()
         self.workers = []
         self.spiders = dict()
-        self.scheduler = Scheduler()
-        self.downloader = Downloader()
-        self.spidermw = SpiderMiddlewareManager()
+        self.scheduler = Scheduler.from_settings(self.settings)
+        self.downloader = Downloader.from_settings(self.settings)
+        self.spidermw = SpiderMiddlewareManager.from_settings(self.settings)
 
     def add_spider(self, spider=None):
         if spider is None:
@@ -81,6 +82,8 @@ class Engine(object):
 
             spider = self._detect_spider(request)
             try:
+                while not self.downloader.available():
+                    await asyncio.sleep(0.1)
                 response = await self.downloader.fetch(request, spider)
             finally:
                 self.scheduler.ack_last_request()

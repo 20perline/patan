@@ -7,6 +7,7 @@ sys.path.append('../patan')
 from patan.patan import Patan
 from patan.spiders import BaseSpider
 from patan.http.request import Request
+from patan.settings import Settings
 
 
 class EastmoneySpider(BaseSpider):

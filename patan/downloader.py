@@ -13,9 +13,19 @@ logger = logging.getLogger(__name__)
 
 class Downloader(object):
 
-    def __init__(self):
+    def __init__(self, settings):
         self.client = None
-        self.downloadmw = DownloaderMiddlewareManager()
+        self.settings = settings
+        self.max_concurrency = self.settings.get('downloader.concurrent_requests')
+        self.active = set()
+        self.downloadmw = DownloaderMiddlewareManager.from_settings(self.settings)
+
+    @classmethod
+    def from_settings(cls, settings):
+        return cls(settings)
+
+    def available(self):
+        return len(self.active) < self.max_concurrency
 
     async def close(self):
         if self.client is not None:
@@ -26,15 +36,19 @@ class Downloader(object):
     async def fetch(self, request, spider):
         if self.client is None:
             self.client = aiohttp.ClientSession()
+        result = None
         try:
-            return await self._fetch(request, spider)
+            self.active.add(request)
+            result = await self._fetch(request, spider)
         except aiohttp.client_exceptions.ClientOSError as e:
             logger.error('%s fetch client exception: %s' % (request, e))
         except asyncio.exceptions.TimeoutError:
             logger.error('%s timed out' % request)
         except Exception as e:
             logger.error('%s fetch exception: %s' % (request, e))
-        return None
+        finally:
+            self.active.remove(request)
+        return result
 
     async def _fetch(self, request, spider):
         logger.info(request)
@@ -50,8 +64,9 @@ class Downloader(object):
 
         response = None
         request_headers = request.headers
-        timeout = request.meta.pop('timeout', 300)
-        async with self.client.get(request.url, headers=request_headers, timeout=timeout) as http_resp:
+        timeout = request.meta.pop('timeout')
+        proxy = self.settings.get('downloader.http.proxy')
+        async with self.client.get(request.url, headers=request_headers, timeout=timeout, cookies=request.cookies, proxy=proxy) as http_resp:
             content = await http_resp.text(request.encoding)
             response = Response(
                 url=request.url,

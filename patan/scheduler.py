@@ -10,13 +10,19 @@ logger = logging.getLogger(__name__)
 
 class Scheduler(object):
 
-    def __init__(self, dup_filter=None):
+    def __init__(self, capacity, dup_filter=None):
         self.queue = None
+        self.capacity = capacity
         self.df = dup_filter or SimpleDupFilter()
+
+    @classmethod
+    def from_settings(cls, settings):
+        cap = settings.get('scheduler.queue.capacity')
+        return cls(cap)
 
     def ensure_queue(self):
         if self.queue is None:
-            self.queue = asyncio.Queue(1024)
+            self.queue = asyncio.Queue(self.capacity)
 
     # push new request to the queue immediately, won't block
     def enqueue_nowait(self, request: Request):

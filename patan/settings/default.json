@@ -1,0 +1,37 @@
+{
+    "engine":{
+        "workers_num": 10
+    },
+    "scheduler":{
+        "queue": {
+            "capacity": 1024
+        },
+        "throttle": {
+            "delay": 2.0
+        }
+    },
+    "spider":{
+        "middlewares": {
+            "patan.spidermws.depth.DepthMiddleware": 10,
+            "patan.spidermws.httperror.HttpErrorMiddleware": 50
+        },
+        "depth_limit": 0
+    },
+    "downloader":{
+        "middlewares": {
+            "patan.downloadermws.timeout.DownloadTimeoutMiddleware": 50,
+            "patan.downloadermws.useragent.UserAgentMiddleware": 10
+        },
+        "timeout": 60,
+        "concurrent_requests": 20,
+        "http": {
+            "user_agent": null,
+            "proxy": null
+        }
+    },
+    "log":{
+        "format": "%(asctime)s %(process)d [%(levelname)s] [%(name)s] %(message)s",
+        "level": "info",
+        "file": null
+    }
+}
