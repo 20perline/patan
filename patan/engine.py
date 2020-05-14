@@ -3,11 +3,13 @@
 import logging
 import asyncio
 import traceback
+from dataclasses import is_dataclass
 from .http.request import Request
 from .http.response import Response
 from .scheduler import Scheduler
 from .downloader import Downloader
 from .middleware import SpiderMiddlewareManager
+from .middleware import PipelineManager
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +25,7 @@ class Engine(object):
         self.scheduler = Scheduler.from_settings(self.settings)
         self.downloader = Downloader.from_settings(self.settings)
         self.spidermw = SpiderMiddlewareManager.from_settings(self.settings)
+        self.pipeline = PipelineManager.from_settings(self.settings)
 
     def add_spider(self, spider=None):
         if spider is None:
@@ -113,8 +116,8 @@ class Engine(object):
                 if isinstance(resp, Request):
                     self._attach_spider(resp, spider)
                     await self.scheduler.enqueue(resp)
-                else:
-                    logger.info(resp)
+                elif is_dataclass(resp):
+                    await self.pipeline.process_item(resp, spider)
 
     # manager worker used to gracefully exit
     async def manage(self):

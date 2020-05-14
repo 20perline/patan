@@ -1,18 +1,21 @@
 # _*_ coding: utf-8 _*_
+from typing import Dict
+from dataclasses import dataclass
+from dataclasses import field
+from .request import Request
 
 
-class Response(object):
-
-    def __init__(self, url=None, status=None, headers=None, body=None, request=None):
-        self.status = status
-        self.url = url
-        self.headers = headers or {}
-        self.body = body
-        self.request = request
+@dataclass
+class Response:
+    url: str
+    status: int = None
+    headers: Dict = field(default_factory=dict)
+    body: str = ''
+    request: Request = None
 
     @property
     def meta(self):
         return self.request.meta
 
     def __str__(self):
-        return "%d %s" % (self.status, self.url)
+        return "%s %s" % (self.status, self.url)

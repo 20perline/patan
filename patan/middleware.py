@@ -1,5 +1,7 @@
 # _*_ coding: utf-8 _*_
 import logging
+import inspect
+import traceback
 from . import utils
 from .http.request import Request
 from .http.response import Response
@@ -111,3 +113,35 @@ class SpiderMiddlewareManager(MiddlewareManager):
                 return result
 
         return
+
+
+class PipelineManager(MiddlewareManager):
+
+    def __init__(self, *middlewares):
+        super().__init__(*middlewares)
+
+    @classmethod
+    def from_settings(cls, settings):
+        middlewares = []
+        for mw in settings.get_sorted_list('pipelines'):
+            mw_cls = utils.load_class_by_name(mw)
+            mw_obj = utils.get_obj_by_class(mw_cls, settings)
+            middlewares.append(mw_obj)
+        return cls(*middlewares)
+
+    '''process item'''
+    async def process_item(self, item, spider):
+        if self.middlewares is None or len(self.middlewares) == 0:
+            logger.info(item)
+
+        for mw in self.middlewares:
+            attr = getattr(mw, 'process_item', None)
+            if attr is None:
+                logger.warn('there should be one function name process_item for each pipeline: %s' % type(mw).__name__)
+                continue
+            try:
+                result = mw.process_item(item, spider)
+                if inspect.iscoroutine(result):
+                    await result
+            except Exception:
+                logger.error("process item exception: %s \n%s" % (item, traceback.format_exc()))

@@ -8,6 +8,13 @@ from patan.patan import Patan
 from patan.spiders import BaseSpider
 from patan.http.request import Request
 from patan.settings import Settings
+from dataclasses import dataclass
+
+
+@dataclass
+class StockItem:
+    name: str
+    code: str
 
 
 class EastmoneySpider(BaseSpider):
@@ -25,7 +32,7 @@ class EastmoneySpider(BaseSpider):
         try:
             data = json.loads(body)
             for row in data['data']['diff']:
-                yield {'code': row['f12'], 'name': row['f14']}
+                yield StockItem(code=row['f12'], name=row['f14'])
         except Exception as e:
             self.logger.error('parse item %s' % e)
 

@@ -1,29 +1,22 @@
 # _*_ coding: utf-8 _*_
+from typing import Dict
+from typing import Callable
+from dataclasses import dataclass
+from dataclasses import field
 
 
-class Request(object):
+@dataclass
+class Request:
+    url: str
+    method: str = 'GET'
+    encoding: str = 'utf-8'
+    headers: Dict = field(default_factory=dict)
+    cookies: Dict = field(default_factory=dict)
+    meta: Dict = field(default_factory=dict)
+    callback: Callable = None
 
-    def __init__(self,
-                 url=None,
-                 method='GET',
-                 headers=None,
-                 callback=None,
-                 meta=None,
-                 encoding='utf-8',
-                 cookies=None,
-                 body=None):
-
-        if callback is not None and not callable(callback):
-            raise TypeError('callback must be a callable')
-        self.callback = callback
-        self.url = url
-        self.encoding = encoding
-        self.method = str(method).upper()
-        self.headers = headers or {}
-        self.cookies = cookies or {}
-        # sp: spider name
-        # timeout: downloader timeout
-        self.meta = meta or {}
+    def __hash__(self):
+        return hash((self.method, self.url))
 
     def __str__(self):
         return "%s %s" % (self.method, self.url)

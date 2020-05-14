@@ -20,15 +20,15 @@ class Settings(object):
 
     def _merge(self, src, target):
         for key, value in target.items():
-            if key in src:
-                if isinstance(value, dict) and isinstance(src[key], dict):
-                    self._merge(src[key], value)
-                elif src[key] == value:
-                    pass
-                elif isinstance(value, list) and isinstance(src[key], list):
-                    src[key] = src[key] + value
-                else:
-                    src[key] = value
+            if key not in src:
+                src[key] = value
+                continue
+            if isinstance(value, dict) and isinstance(src[key], dict):
+                self._merge(src[key], value)
+            elif src[key] == value:
+                pass
+            elif isinstance(value, list) and isinstance(src[key], list):
+                src[key] = src[key] + value
             else:
                 src[key] = value
         return src

@@ -8,8 +8,8 @@ The core idea of Patan is inspired by [Scrapy](https://doc.scrapy.org/en/master/
 
 ### Contributing
 
-- use flake8 as linter
-- use yapf as formatter
+- linter: flake8
+- formatter: yapf
 
 ### Features
 
@@ -23,9 +23,10 @@ The core idea of Patan is inspired by [Scrapy](https://doc.scrapy.org/en/master/
 - [x] Middlewares
 - [x] Exception Handling
 - [x] Throttle Control
-- [ ] Item Pipelines
-- [ ] Multiprocessing
+- [x] Item Pipelines
 - [ ] Scaffolding CLI
+- [ ] Multiprocessing
+- [ ] Pause and Resume
 - [ ] Statistics Data Collecting
 - [ ] Web UI
 - [ ] More Protocols Support
