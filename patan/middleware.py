@@ -132,12 +132,12 @@ class PipelineManager(MiddlewareManager):
     '''process item'''
     async def process_item(self, item, spider):
         if self.middlewares is None or len(self.middlewares) == 0:
-            logger.info(item)
+            return
 
         for mw in self.middlewares:
             attr = getattr(mw, 'process_item', None)
             if attr is None:
-                logger.warn('there should be one function name process_item for each pipeline: %s' % type(mw).__name__)
+                logger.warn('pipeline %s has no attr named process_item' % type(mw).__name__)
                 continue
             try:
                 result = mw.process_item(item, spider)

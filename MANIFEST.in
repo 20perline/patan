@@ -1,0 +1,2 @@
+include patan/settings/default.json
+recursive-include patan/templates *

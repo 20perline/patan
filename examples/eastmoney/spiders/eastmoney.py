@@ -1,20 +1,9 @@
 # _*_ coding: utf-8 _*_
-
-import sys
-import json
 import re
-sys.path.append('../patan')
-from patan.patan import Patan
+import json
 from patan.spiders import BaseSpider
 from patan.http.request import Request
-from patan.settings import Settings
-from dataclasses import dataclass
-
-
-@dataclass
-class StockItem:
-    name: str
-    code: str
+from ..items import StockItem
 
 
 class EastmoneySpider(BaseSpider):
@@ -35,9 +24,3 @@ class EastmoneySpider(BaseSpider):
                 yield StockItem(code=row['f12'], name=row['f14'])
         except Exception as e:
             self.logger.error('parse item %s' % e)
-
-
-if __name__ == '__main__':
-    patan = Patan()
-    patan.crawl(EastmoneySpider())
-    patan.start()
