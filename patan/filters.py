@@ -26,5 +26,5 @@ class SimpleDupFilter(BaseDupFilter):
         if url not in self.item_set:
             self.item_set.add(url)
             return False
-        logger.debug('>>> {} skipped'.format(url))
+        logger.debug('Skip {}'.format(url))
         return True

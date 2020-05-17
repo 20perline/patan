@@ -98,7 +98,7 @@ class Engine(object):
             # some middleware might return requests
             if isinstance(response, Request):
                 self._attach_spider(response, spider)
-                await self.scheduler.enqueue(response)
+                self._schedule_request(response)
                 continue
 
             # walk through all spider middlewares
@@ -115,9 +115,13 @@ class Engine(object):
             for resp in response:
                 if isinstance(resp, Request):
                     self._attach_spider(resp, spider)
-                    await self.scheduler.enqueue(resp)
+                    self._schedule_request(resp)
                 elif is_dataclass(resp):
                     await self.pipeline.process_item(resp, spider)
+
+    # create another temp task to schedule the new request , otherwise it will block the workers (producer mostly faster than consumer)
+    def _schedule_request(self, request):
+        asyncio.create_task(self.scheduler.enqueue(request))
 
     # manager worker used to gracefully exit
     async def manage(self):
