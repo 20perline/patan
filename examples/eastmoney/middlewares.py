@@ -23,6 +23,7 @@ class EastmoneySpiderMiddleware(SpiderMiddleware):
         # result come from spider parse output or other spider middlewares
         # this is the entry point you want to make some change before passing the result to pipeline
         # return an iterable of Request or items.
+        print(result)
         return result
 
     def when_exception(self, response, exception, spider):

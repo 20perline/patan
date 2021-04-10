@@ -4,7 +4,8 @@
 from dataclasses import dataclass
 
 
-@dataclass
+@dataclass(init=False)
 class StockItem:
     name: str
     code: str
+    ddx: int = None

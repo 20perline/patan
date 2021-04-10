@@ -105,7 +105,7 @@ class Engine(object):
             try:
                 self.spidermw.handle_input(response, spider)
                 callback = request.callback
-                cb_res = callback(response)
+                cb_res = callback(response, **request.cb_kwargs)
                 response = self.spidermw.handle_output(response, cb_res, spider)
             except Exception as e:
                 logger.warn("%s spider middleware chain aborted, exception: %s \n%s" % (response, e, traceback.format_exc()))
