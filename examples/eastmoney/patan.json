@@ -1,5 +1,0 @@
-{
-    "pipelines": {
-        "eastmoney.pipelines.EastmoneyPipeline": 10
-    }
-}
