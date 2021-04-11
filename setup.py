@@ -24,6 +24,9 @@ setup(
     include_package_data=True,
     zip_safe=False,
     entry_points={'console_scripts': ['patan = patan.cli:main']},
-    install_requires=['aiohttp>=3.6.2', 'glom>=20.5.0', 'click>=6.7'],
+    install_requires=['aiohttp>=3.6.2', 'glom>=20.5.0', 'click>=6.7', 'aiohttp-sse-client>=0.2.1'],
     python_requires='>=3.7',
 )
+
+# local development
+# pip install --upgrade .

@@ -14,6 +14,7 @@ class Request:
     cookies: Dict = field(default_factory=dict)
     meta: Dict = field(default_factory=dict)
     callback: Callable = None
+    cb_kwargs: Dict = field(default_factory=dict)
 
     def __hash__(self):
         return hash((self.method, self.url))
