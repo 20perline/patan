@@ -1,1 +1,3 @@
-# _*_ coding: utf-8 _*_
+from patan.channels.douyin.client import DouyinClient
+
+__all__ = ["DouyinClient"]

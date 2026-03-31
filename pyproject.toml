@@ -1,0 +1,112 @@
+[project]
+name = "patan"
+version = "0.1.0"
+description = "Lightweight Python library for interacting with Chinese social media platforms"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+keywords = ["api", "crawler", "douyin", "async", "http-client"]
+authors = [
+    { name = "20perline" }
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Software Development :: Libraries",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "click>=8.0.0",
+    "gmssl>=3.2.2",
+    "httpx>=0.27.0",
+    "pydantic>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "typer>=0.12.0",
+]
+
+[project.optional-dependencies]
+browser = [
+    "browser-cookie3>=0.19.0",
+]
+dev = [
+    "pyright>=1.1.300",
+    "ruff>=0.5.0",
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+]
+all = [
+    "patan[browser,dev]",
+]
+
+[project.scripts]
+patan = "patan.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/20perline/patan"
+Repository = "https://github.com/20perline/patan"
+Issues = "https://github.com/20perline/patan/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["patan"]
+
+[tool.uv.pip]
+system = true
+
+[tool.ruff]
+target-version = "py311"
+line-length = 160
+extend-exclude = ["logs", "workspace", "__pycache__"]
+
+[tool.ruff.lint]
+select = [
+    "F",   # Pyflakes
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "UP",  # pyupgrade (自动升级新语法)
+]
+ignore = ["F401"]
+
+[tool.ruff.format]
+line-ending = "lf"
+quote-style = "double"
+
+[tool.pyright]
+include = ["patan", "tests"]
+exclude = [
+    "logs",
+    "workspace",
+    "**/__pycache__",
+    "**/node_modules",
+    "**/.*",
+]
+pythonVersion = "3.11"
+typeCheckingMode = "basic"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.coverage.run]
+source = ["patan"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
