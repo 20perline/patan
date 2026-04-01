@@ -2,9 +2,12 @@
 
 import hashlib
 from pathlib import Path
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
-from patan.core.logging import logger
+from patan.core.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 class ContentDeduplicator:
@@ -103,7 +106,7 @@ class ContentDeduplicator:
                 for chunk in iter(lambda: f.read(8192), b""):
                     md5_hash.update(chunk)
             return md5_hash.hexdigest()
-        except (IOError, OSError) as exc:
+        except OSError as exc:
             logger.error(f"无法计算文件哈希 {file_path}: {exc}")
             return None
 

@@ -244,6 +244,31 @@ verify_fp = await client.generate_verify_fp()
 web_id = await client.generate_web_id()
 ```
 
+### File Downloading
+
+```python
+from pathlib import Path
+
+from patan.core import VideoDownloader
+
+
+async def download_videos() -> None:
+    async with VideoDownloader(max_concurrent=3, timeout=60) as downloader:
+        await downloader.download(
+            "https://example.com/video.mp4",
+            Path("downloads"),
+        )
+
+        await downloader.download_batch(
+            [
+                "https://example.com/video-1.mp4",
+                "https://example.com/video-2.mp4",
+            ],
+            Path("downloads"),
+            naming_template="video_{index}.mp4",
+        )
+```
+
 ## Development
 
 ### Setup Development Environment

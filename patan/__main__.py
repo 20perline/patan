@@ -1,11 +1,13 @@
 """patan CLI - Interactive command-line interface."""
 
 import asyncio
-from typing import Optional
+from pathlib import Path
+from typing import Any
 
 import typer
 from patan.channels.douyin import DouyinClient, DouyinConfig
 from patan.core import logger
+from patan.core.downloader import VideoDownloader
 
 app = typer.Typer(help="patan - Chinese social media API client library")
 
@@ -34,12 +36,12 @@ def config() -> None:
             typer.echo("ℹ️  Proxies: Not configured")
 
         # Show headers
-        typer.echo(f"\n📋 Headers:")
+        typer.echo("\n📋 Headers:")
         typer.echo(f"   User-Agent: {cfg.headers.get('User-Agent', 'N/A')[:60]}...")
         typer.echo(f"   Referer: {cfg.headers.get('Referer', 'N/A')}")
 
         # Show token config
-        typer.echo(f"\n🔑 Token Configuration:")
+        typer.echo("\n🔑 Token Configuration:")
         typer.echo(f"   MS Token URL: {cfg.ms_token_conf.get('url', 'N/A')}")
         typer.echo(f"   TTWID URL: {cfg.ttwid_conf.get('url', 'N/A')}")
 
@@ -112,7 +114,7 @@ def user(url: str) -> None:
     Example:
         python -m patan user https://www.douyin.com/user/MS4wLjABAAAA...
     """
-    typer.echo(f"👤 Fetching user profile...")
+    typer.echo("👤 Fetching user profile...")
     typer.echo(f"URL: {url}")
     typer.echo("=" * 50)
 
@@ -127,7 +129,7 @@ def user(url: str) -> None:
 
             # Fetch user profile
             typer.echo("\n2️⃣  Fetching user profile...")
-            profile = await client.fetch_user_profile(sec_user_id)
+            profile: dict[str, Any] = await client.fetch_user_profile(sec_user_id)
 
             # Display results
             typer.echo("\n📊 User Profile:")
@@ -160,7 +162,7 @@ def posts(url: str, count: int = 10) -> None:
     Example:
         python -m patan posts https://www.douyin.com/user/MS4wLjABAAAA... --count 10
     """
-    typer.echo(f"📝 Fetching user posts...")
+    typer.echo("📝 Fetching user posts...")
     typer.echo(f"URL: {url}")
     typer.echo(f"Count: {count}")
     typer.echo("=" * 50)
@@ -175,15 +177,15 @@ def posts(url: str, count: int = 10) -> None:
             typer.echo(f"   ✅ sec_user_id: {sec_user_id}")
 
             # Fetch user posts
-            typer.echo(f"\n2️⃣  Fetching posts...")
-            posts = await client.fetch_user_post_videos(
+            typer.echo("\n2️⃣  Fetching posts...")
+            posts: dict[str, Any] = await client.fetch_user_post_videos(
                 sec_user_id=sec_user_id,
                 max_cursor=0,
                 count=count
             )
 
             # Display results
-            typer.echo(f"\n📊 Posts (max_cursor=0):")
+            typer.echo("\n📊 Posts (max_cursor=0):")
             if "aweme_list" in posts:
                 aweme_list = posts.get("aweme_list", [])
                 typer.echo(f"   Total posts: {len(aweme_list)}")
@@ -205,16 +207,18 @@ def posts(url: str, count: int = 10) -> None:
 
 
 @app.command()
-def video(url: str) -> None:
-    """Fetch video details from Douyin URL.
+def video(url: str, save_dir: Path = Path(".")) -> None:
+    """Download video from Douyin URL.
 
     Args:
         url: Douyin video URL
+        save_dir: Directory to save the video file
 
     Example:
         python -m patan video https://www.douyin.com/video/7300000000000000000
+        python -m patan video https://www.douyin.com/video/7300000000000000000 --save-dir ./downloads
     """
-    typer.echo(f"🎬 Fetching video details...")
+    typer.echo("🎬 Fetching video details...")
     typer.echo(f"URL: {url}")
     typer.echo("=" * 50)
 
@@ -228,31 +232,40 @@ def video(url: str) -> None:
             typer.echo(f"   ✅ aweme_id: {aweme_id}")
 
             # Fetch video details
-            typer.echo(f"\n2️⃣  Fetching video details...")
-            details = await client.fetch_video_detail(aweme_id)
+            typer.echo("\n2️⃣  Fetching video details...")
+            details: dict[str, Any] = await client.fetch_video_detail(aweme_id)
 
             # Display results
-            typer.echo(f"\n📊 Video Details:")
-            if "aweme_detail" in details:
-                video_data = details.get("aweme_detail", {})
-                desc = video_data.get("desc", "No description")
-                stats = video_data.get("statistics", {})
-                typer.echo(f"   Description: {desc}")
-                typer.echo(f"   Likes: {stats.get('digg_count', 0)}")
-                typer.echo(f"   Comments: {stats.get('comment_count', 0)}")
-                typer.echo(f"   Shares: {stats.get('share_count', 0)}")
-                typer.echo(f"   Plays: {stats.get('play_count', 0)}")
-
-                # Get video URL
-                video_url = video_data.get("video", {}).get("play_addr", {}).get("url_list", [])
-                if video_url:
-                    typer.echo(f"   Video URL: {video_url[0][:80]}...")
-            else:
+            typer.echo("\n📊 Video Details:")
+            if "aweme_detail" not in details:
                 typer.echo(f"   Raw data: {details}")
+                return
+
+            video_data = details.get("aweme_detail", {})
+            desc = video_data.get("desc", "No description")
+            stats = video_data.get("statistics", {})
+            typer.echo(f"   Description: {desc}")
+            typer.echo(f"   Likes: {stats.get('digg_count', 0)}")
+            typer.echo(f"   Comments: {stats.get('comment_count', 0)}")
+            typer.echo(f"   Shares: {stats.get('share_count', 0)}")
+            typer.echo(f"   Plays: {stats.get('play_count', 0)}")
+
+            # Download video
+            video_url_list = video_data.get("video", {}).get("play_addr", {}).get("url_list", [])
+            if not video_url_list:
+                typer.echo("\n⚠️  No downloadable video URL found")
+                return
+
+            typer.echo("\n3️⃣  Downloading video...")
+            cfg = DouyinConfig.load()
+            async with VideoDownloader(proxy=cfg.proxies.get("https")) as downloader:
+                filename = f"{aweme_id}.mp4"
+                save_path = await downloader.download(video_url_list[0], save_dir, filename=filename)
+                typer.echo(f"\n✅ Saved to: {save_path}")
 
         except Exception as exc:
             typer.echo(f"❌ Error: {exc}", err=True)
-            logger.exception("Video fetch failed")
+            logger.exception("Video download failed")
             raise typer.Exit(code=1)
 
     asyncio.run(fetch_video())
@@ -268,7 +281,7 @@ def comments(url: str) -> None:
     Example:
         python -m patan comments https://www.douyin.com/video/7300000000000000000
     """
-    typer.echo(f"💬 Fetching video comments...")
+    typer.echo("💬 Fetching video comments...")
     typer.echo(f"URL: {url}")
     typer.echo("=" * 50)
 
@@ -282,11 +295,11 @@ def comments(url: str) -> None:
             typer.echo(f"   ✅ aweme_id: {aweme_id}")
 
             # Fetch comments
-            typer.echo(f"\n2️⃣  Fetching comments...")
-            comments_data = await client.fetch_video_comments(aweme_id)
+            typer.echo("\n2️⃣  Fetching comments...")
+            comments_data: dict[str, Any] = await client.fetch_video_comments(aweme_id)
 
             # Display results
-            typer.echo(f"\n📊 Comments:")
+            typer.echo("\n📊 Comments:")
             if "comments" in comments_data:
                 comments = comments_data.get("comments", [])
                 typer.echo(f"   Total comments: {len(comments)}")
